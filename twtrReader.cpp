@@ -8,7 +8,7 @@
 #include <QtGui/QHBoxLayout>
 #include <QtGui/QVBoxLayout>
 #include <QtGui/QPushButton>
-#include <QtGui/QTextEdit>
+#include <QtGui/QTextBrowser>
 #include <QtGui/QLineEdit>
 #include <QtGui/QSpinBox>
 #include <QtGui/QLabel>
@@ -73,8 +73,14 @@ twtrReader::twtrReader()
 
 	for(int i=0;i<3;i++)
 	{
-		m_textEditList.append(new QTextEdit(this));
+		m_textEditList.append(new QTextBrowser(this));
 
+		////QTextBrowser attributes
+		m_textEditList[i]->setOpenExternalLinks(true);
+		QString sheet;
+		sheet.append("a { text-decoration: none; }");
+		m_textEditList[i]->document()->setDefaultStyleSheet(sheet);
+		////
 		m_pHLayout2->addWidget(m_textEditList[i]);
 	}
 
@@ -101,6 +107,13 @@ twtrReader::~twtrReader()
 
 void twtrReader::updateData()
 {
+	/*
+	QString str = "Test words RT @user http://google.com #agqr #2h";
+	str = toHTML(str);
+	m_textEditList[0]->setHtml(str);
+	return;
+	*/
+
 	QNetworkRequest request;
 
 	// get URL from widget
@@ -135,7 +148,7 @@ void twtrReader::replyFinished(QNetworkReply * reply)
 	qDebug() << "Redirect URL:" << possibleRedirectUrl.toUrl();
 	qDebug() << "Head:" << (reply->header(QNetworkRequest::LocationHeader)).toString();
 	QByteArray data = reply->readAll();
-	qDebug() << "Data:" << data;
+	//qDebug() << "Data:" << data;
 	/* We'll deduct if the redirection is valid in the redirectUrl function */
 	_urlRedirectedTo = this->redirectUrl(possibleRedirectUrl.toUrl(), _urlRedirectedTo);
 
@@ -260,20 +273,29 @@ void twtrReader::processData(QByteArray& data)
 
 	int nUpdate = 0;
 	unsigned int i;
+	QString strName;
 
 	for(i=0; i< nResultSize; i++)
 	{
+		//name
 		str += "<b><font color=blue>";
-		str += root["results"][i].get("from_user","").asString().c_str();
+		strName = root["results"][i].get("from_user","").asString().c_str();
+		str += "<a href=\"http://twitter.com/";
+		str += strName;
+		str += "\">";
+		str += strName;
+		str += "</a>";
 		str += "> ";
 		str += "</font></b>";
-		str += QString::fromUtf8(root["results"][i].get("text","").asString().c_str());
+		//text
+		//str += QString::fromUtf8(root["results"][i].get("text","").asString().c_str());
+		str += toHTML(QString::fromUtf8(root["results"][i].get("text","").asString().c_str()));
 		str += "<hr>";
 		str += "\n";	//for debug output
 
 		if((i+1)%nTweetNum == 0)
 		{
-			qDebug() << str;
+			//qDebug() << str;
 			m_textEditList[nUpdate]->setHtml(str);
 			nUpdate++;
 			str.clear();
@@ -295,7 +317,7 @@ void twtrReader::processData(QByteArray& data)
 
 	unsigned int nSplitSize = splitList.size();
 	qDebug() << "SPLIT SIZE:" << nSplitSize;
-	if(i < (nTweetNum*3))
+	if((int)i < (nTweetNum*3))
 	{
 		str += "<font color=gray>";
 		//add remains
@@ -311,7 +333,7 @@ void twtrReader::processData(QByteArray& data)
 			if((i+j+1)%nTweetNum == 0)
 			{
 				str += "</font>";//"</color>";
-				qDebug() << str;
+				//qDebug() << str;
 				m_textEditList[nUpdate]->setHtml(str);
 				nUpdate++;
 				str.clear();
@@ -337,6 +359,58 @@ void twtrReader::changInterval(int i)
 		m_pTimer->start(i*1000);
 }
 
+QString twtrReader::toHTML(QString str)
+{
+	QString resultStr, tempStr;
+
+	QStringList splitList = str.split(" ", QString::SkipEmptyParts);
+	for(int i=0; i<splitList.size(); i++)
+	{
+		tempStr = splitList.at(i);
+		if(tempStr.startsWith('@'))
+		{
+			//user name
+			resultStr += "<font color=blue>";
+			resultStr += "<a href=\"http://twitter.com/";
+			resultStr += tempStr;
+			resultStr += "\">";
+			resultStr += tempStr;
+			resultStr += "</a>";
+			resultStr += "</font>";
+			resultStr += " ";
+		}
+		else if(tempStr.startsWith('#'))
+		{
+			//sharp tag
+			resultStr += "<font color=LightBlue>";
+			resultStr += tempStr;
+			resultStr += "</font>";
+			resultStr += " ";
+		}
+		else if(tempStr.startsWith("http://"))
+		{
+			//TRL
+			resultStr += "<font color=blue>";
+			resultStr += "<a href=\"";
+			resultStr += tempStr;
+			resultStr += "\">";
+			resultStr += tempStr;
+			resultStr += "</a>";
+			resultStr += "</font>";
+			resultStr += " ";
+		}
+		else
+		{
+			resultStr += tempStr;
+			resultStr += " ";
+		}
+	}
+
+	//qDebug() << resultStr;
+
+	return resultStr;
+}
+
 int main(int argc, char *argv[])
 {
 	int nRet;
@@ -348,7 +422,7 @@ int main(int argc, char *argv[])
 
 	nRet = app.exec();
 
-    qDebug() << nRet;
+    //qDebug() << nRet;
 
 	delete pReaderApp;
 

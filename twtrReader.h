@@ -17,7 +17,7 @@ class QVBoxLayout;
 class QPushButton;
 class QNetworkAccessManager;
 class QNetworkReply;
-class QTextEdit;
+class QTextBrowser;
 class QLineEdit;
 class QSpinBox;
 class QTimer;
@@ -29,6 +29,7 @@ Q_OBJECT
 public:
 	twtrReader();
 	~twtrReader();
+	static QString toHTML(QString str);
 
 private slots:
 	void updateData();
@@ -39,7 +40,7 @@ private:
 	QVBoxLayout *m_pVLayout;
 	QHBoxLayout *m_pHLayout1;
 	QHBoxLayout *m_pHLayout2;
-	QList<QTextEdit*> m_textEditList;
+	QList<QTextBrowser*> m_textEditList;
 	QPushButton *m_pUpdateButton;
 	QNetworkAccessManager *m_pManager;
 	QUrl _urlRedirectedTo;
